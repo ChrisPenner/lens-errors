@@ -10,6 +10,9 @@ module Control.Lens.Error
     , modifyOrFail
     , asserting
     , checking
+
+    , CanFail(..)
+    , Accum(..)
     ) where
 
 import Control.Lens.Error.Internal.Accum
