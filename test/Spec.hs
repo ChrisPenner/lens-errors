@@ -14,45 +14,47 @@ main = hspec $ do
     describe "viewOrFail (^&.)" $ do
         it "should view properly through traversals/folds" $ do
             numbers ^&. _2 . traversed . to show
-              `shouldBe` (Success "1234" :: Accum () String)
+              `shouldBe` ((), "1234")
 
         it "should view properly through successful assertions" $ do
             numbers ^&. _2 . traversed . asserting ["shouldn't fail"] (const True) . to show
-              `shouldBe` (Success "1234" :: Accum [String] String)
+              `shouldBe` ([], "1234")
 
         it "should collect failures when they occur" $ do
             numbers ^&. _2 . traversed . failWithWhen (\n -> [show n]) (const True) . to show
-              `shouldBe` (Both ["1", "2", "3", "4"] "":: Accum [String] String)
+              `shouldBe` (["1", "2", "3", "4"], "")
 
         it "should collect failures AND successes when they occur" $ do
             numbers ^&. _2 . traversed . failWithWhen (\n -> [show n]) even . to (:[])
-              `shouldBe` (Both ["2", "4"] [1, 3] :: Accum [String] [Int])
+              `shouldBe` (["2", "4"], [1, 3])
 
     describe "viewOrFailList (^&..)" $ do
         it "should view properly through traversals/folds" $ do
             numbers ^&.. _2 . traversed
-              `shouldBe` (Success [1, 2, 3, 4] :: Accum () [Int])
+              `shouldBe` ((), [1, 2, 3, 4])
 
         it "should view properly through successful assertions" $ do
             numbers ^&..  (_2 . traversed . asserting ["shouldn't fail"] (const True))
-              `shouldBe` (Success [1, 2, 3, 4] :: Accum [String] [Int])
+              `shouldBe` ([], [1, 2, 3, 4])
 
         it "should collect failures when they occur" $ do
             numbers ^&..  (_2 . traversed . failWithWhen (\n -> [show n]) (const True))
-              `shouldBe` (Both ["1", "2", "3", "4"] [] :: Accum [String] [Int])
+              `shouldBe` (["1", "2", "3", "4"], [])
 
         it "should collect failures AND successes when they occur" $ do
             numbers ^&..  (_2 . traversed . failWithWhen (\n -> [show n]) even)
-              `shouldBe` (Both ["2", "4"] [1, 3] :: Accum [String] [Int])
+              `shouldBe` (["2", "4"], [1, 3])
 
     describe "modifyOrFail %&~" $ do
         it "should edit successfully with no assertions" $ do
             (numbers & _2 . traversed %&~ (*100))
-              `shouldBe` (Success ("hi", [100, 200, 300, 400]) :: Accum () (String, [Int]))
+              `shouldBe` (Success ("hi", [100, 200, 300, 400]) :: Validation () (String, [Int]))
         it "should edit successfully through valid assertions" $ do
             (numbers & _2 . traversed . asserting ["shouldn't fail"] (const True) %&~ (*100))
-              `shouldBe` (Success ("hi", [100, 200, 300, 400]) :: Accum [String] (String, [Int]))
+              `shouldBe` (Success ("hi", [100, 200, 300, 400]))
         it "should return failures" $ do
-            (numbers & _2 . traversed . failWith (\n -> [show n])  %&~ (*100))
-              `shouldBe` (Success ("hi", [100, 200, 300, 400]) :: Accum [String] (String, [Int]))
-
+            (numbers & _2 . traversed . failWithWhen (\n -> [n]) (const True) %&~ (*100))
+              `shouldBe` Failure [1, 2, 3, 4]
+        it "should return both failures and successes" $ do
+            (numbers & _2 . traversed . failWithWhen (\n -> [n]) even %&~ (*100))
+              `shouldBe` Failure [2, 4]
