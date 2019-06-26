@@ -20,10 +20,13 @@ module Control.Lens.Error
 
     -- * Failing
     , fizzleWhen
+    , fizzleUnless
     , maybeFizzleWith
     , fizzleWithWhen
+    , fizzleWithUnless
     , fizzleWith
     , fizzleWhenEmpty
+    , fizzleWhenEmptyWith
 
     , LensFail(..)
     , module Data.Either.Validation
@@ -34,8 +37,11 @@ import Control.Lens
 import Data.Either.Validation
 
 fizzleWhen :: forall e s f. LensFail e f => e -> (s -> Bool) -> LensLike' f s s
-fizzleWhen e check f s | check s = f s
-                      | otherwise = throw e
+fizzleWhen e check f s | check s = throw e
+                       | otherwise = f s
+
+fizzleUnless :: forall e s f. LensFail e f => e -> (s -> Bool) -> LensLike' f s s
+fizzleUnless e check = fizzleWhen e (not . check)
 
 maybeFizzleWith :: forall e s f. LensFail e f => (s -> Maybe e) -> LensLike' f s s
 maybeFizzleWith check f s =
@@ -48,13 +54,22 @@ fizzleWithWhen mkErr check f s
   | check s = throw $ mkErr s
   | otherwise = f s
 
+fizzleWithUnless :: forall e s f. LensFail e f => (s -> e) -> (s -> Bool)-> LensLike' f s s
+fizzleWithUnless mkErr check = fizzleWithWhen mkErr (not . check)
+
 fizzleWith :: forall e s t a b f. LensFail e f => (s -> e) -> LensLike f s t a b
 fizzleWith mkErr _ s = throw (mkErr s)
 
 fizzleWhenEmpty :: forall e s t a b f.
   (LensFail e f, Applicative f) =>
+  Traversing (->) f s t a b -> e -> LensLike f s t a b
+fizzleWhenEmpty l e = fizzleWhenEmptyWith l (const e)
+
+fizzleWhenEmptyWith :: forall e s t a b f.
+  (LensFail e f, Applicative f) =>
   Traversing (->) f s t a b -> (s -> e) -> LensLike f s t a b
-fizzleWhenEmpty l mkErr = l `failing` fizzleWith mkErr
+fizzleWhenEmptyWith l mkErr = l `failing` fizzleWith mkErr
+
 
 infixl 8 ^&.
 (^&.) :: forall e s a. Monoid e => s -> Getting (e, a) s a -> (e, a)
