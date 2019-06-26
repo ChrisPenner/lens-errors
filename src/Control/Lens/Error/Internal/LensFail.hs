@@ -1,25 +1,25 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
-module Control.Lens.Error.Internal.Accum where
+module Control.Lens.Error.Internal.LensFail where
 
 import Data.Functor.Const
 import Data.Either.Validation
 
 class LensFail e f | f -> e where
-  throw :: e -> f a
+  fizzle :: e -> f a
 
 instance Monoid a => LensFail e (Const (e, a)) where
-  throw e = Const (e, mempty)
+  fizzle e = Const (e, mempty)
 
 instance LensFail e (Const (Either e a)) where
-  throw e = Const (throw e)
+  fizzle e = Const (fizzle e)
 
 instance LensFail e (Const (Validation e a)) where
-  throw e = Const (throw e)
+  fizzle e = Const (fizzle e)
 
 instance LensFail e (Either e) where
-  throw e = Left e
+  fizzle e = Left e
 
 instance LensFail e (Validation e) where
-  throw e = Failure e
+  fizzle e = Failure e
