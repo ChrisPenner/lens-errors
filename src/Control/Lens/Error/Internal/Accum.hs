@@ -1,9 +1,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeOperators #-}
 module Control.Lens.Error.Internal.Accum where
 
 import Data.Functor.Const
+import GHC.TypeLits
 
 data Accum e a = Failure e | Success a | Both e a
   deriving (Show, Eq, Functor)
@@ -42,6 +46,14 @@ instance CanFail e (Accum e) where
 
 instance {-# OVERLAPPING #-} CanFail e (Const (Accum e a)) where
   throw e = Const (throw e)
+
+instance {-# OVERLAPPING #-}
+  (TypeError ('Text "Please specify a concrete error type in your signature."
+              ':$$: 'Text "GHC inferred " ':<>: 'ShowType (Const (Accum x a)) ':<>: 'Text " which is likely incorrect."
+              ':$$: 'Text "lens-errors isn't so good at inference yet :''("))
+    => CanFail e (Const (Accum x a)) where
+    throw _ =
+        error "Please specify a concrete error type in your signature, lens-errors isn't so good at inference yet :''("
 
 -- -- This allows most folds in lens to still run; just ignoring errors.
 instance {-# OVERLAPPABLE #-} Monoid m => CanFail e (Const m) where

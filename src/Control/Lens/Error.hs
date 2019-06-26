@@ -41,17 +41,17 @@ infixl 8 %&~
 modifyOrFail :: (a -> Accum e b) -> LensLike (Accum e) s t a b -> s -> Accum e t
 modifyOrFail f l s = l f s
 
--- badData :: (String, [Int])
--- badData = ("hi", [1, 2, 3, 4])
+badData :: (String, [Int])
+badData = ("hi", [1, 2, 3, 4])
 
--- goodData :: (String, [Int])
--- goodData = ("hi", [2, 4])
+goodData :: (String, [Int])
+goodData = ("hi", [2, 4])
 
--- traverseEvenNums :: (Applicative f, CanFail [String] f) => LensLike' f (String, [Int]) Int
--- traverseEvenNums =  _2 . traversed . checking checkEven
---   where
---     checkEven x | even x = Nothing
---                 | otherwise = Just [show x <> " is not an even number"]
+traverseEvenNums :: (Applicative f, CanFail [String] f) => LensLike' f (String, [Int]) Int
+traverseEvenNums =  _2 . traversed . checking checkEven
+  where
+    checkEven x | even x = Nothing
+                | otherwise = Just [show x <> " is not an even number"]
 
 -- -- λ> viewOrFail traverseEvenNums badData
 -- -- Failure ["1 is not an even number","3 is not an even number"]
