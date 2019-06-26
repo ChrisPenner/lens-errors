@@ -2,6 +2,8 @@
 import Control.Lens
 import Control.Lens.Error
 import Test.Hspec
+import Data.Tree
+import Data.Tree.Lens
 
 numbers :: (String, [ Int ])
 numbers = ("hi", [1, 2, 3, 4])
@@ -42,6 +44,16 @@ main = hspec $ do
             numbers ^&..  (_2 . traversed . fizzleWithWhen (\n -> [show n]) even)
               `shouldBe` (["2", "4"], [1, 3])
 
+    describe "preexamine ^&?" $ do
+        it "Should find first success or return all errors" $ do
+            let prismError p name = p `fizzleWhenEmptyWith` (\v -> ["Value " <> show v <> " didn't match: " <> name])
+            let _R = prismError _Right "_Right"
+            ([Left (1 :: Int), Left 2, Right (3 :: Int)] ^&? traversed . _R)
+              `shouldBe` (Success 3)
+            ([Left (1 :: Int), Left 2, Left 3] ^&? traversed . _R)
+              `shouldBe` (Failure [ "Value Left 1 didn't match: _Right"
+                                  , "Value Left 2 didn't match: _Right"
+                                  , "Value Left 3 didn't match: _Right"])
     describe "tryModify %&~" $ do
         it "should edit successfully with no assertions" $ do
             (numbers & _2 . traversed %&~ (*100))
@@ -94,3 +106,22 @@ main = hspec $ do
         it "should always fizzle using the error builder" $ do
             numbers ^&.. (_2 . traversed . filtered (> 10)) `fizzleWhenEmptyWith` (\(_, xs) -> ["searched " <> show (length xs) <> " elements, no luck"])
               `shouldBe` (["searched 4 elements, no luck"], [])
+
+    describe "real examples" $ do
+        it "tree get success" $ do
+            let tree = Node "top" [Node "mid" [Node "bottom" []]]
+            let tryIx n = ix n `fizzleWhenEmptyWith` (\xs -> [show n <> " was out of bounds in list: " <> show xs])
+            tree ^&.. branches . tryIx 0 . branches . tryIx 0 . root
+                `shouldBe` ([],["bottom"])
+        it "tree get failure" $ do
+            let tree = Node "top" [Node "mid" [Node "bottom" []]]
+            let tryIx n = ix n `fizzleWhenEmptyWith` (\xs -> [show n <> " was out of bounds in list: " <> show xs])
+            tree ^&.. branches . tryIx 0 . branches . tryIx 10 . root
+                `shouldBe` (["10 was out of bounds in list: [Node {rootLabel = \"bottom\", subForest = []}]"],[])
+        it "tree set" $ do
+            let tree = Node "top" [Node "mid" [Node "bottom" []]]
+            let tryIx n = ix n `fizzleWhenEmptyWith` (\xs -> [show n <> " was out of bounds in list: " <> show xs])
+            (tree & branches . tryIx 0 . branches . tryIx 10 . root %&~ (<> "!!"))
+                `shouldBe` (Failure ["10 was out of bounds in list: [Node {rootLabel = \"bottom\", subForest = []}]"])
+
+

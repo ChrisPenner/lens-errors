@@ -9,10 +9,12 @@ module Control.Lens.Error
     , examineList
     , tryModify
     , tryModify'
+    , preexamine
 
     -- * Operators
     , (^&.)
     , (^&..)
+    , (^&?)
     , (%&~)
     , (%%&~)
 
@@ -36,6 +38,7 @@ module Control.Lens.Error
 import Control.Lens.Error.Internal.LensFail
 import Control.Lens
 import Data.Either.Validation
+import Data.Monoid
 
 -- | Cause the current traversal to fizzle with a failure when the focus matches a predicate
 fizzleWhen :: LensFail e f => e -> (s -> Bool) -> LensLike' f s s
@@ -106,6 +109,18 @@ examine l = getConst . l (Const . (mempty,))
 -- with error collection.
 examineList :: Monoid e => Getting (e, [a]) s a -> s -> (e, [a])
 examineList l = getConst . l (Const . (mempty,) . (:[]))
+
+infixl 8 ^&?
+-- | Operator alias of 'preexamine'
+-- Find the first element of a traversal; or return all errors found along the way.
+(^&?) :: Monoid e => s -> Getting (e, First a) s a -> Validation e a
+(^&?) s l = unpack . getConst .  l (Const . (mempty,) . First . Just) $ s
+  where
+    unpack (_, First (Just a)) = Success a
+    unpack (e, First (Nothing)) = Failure e
+
+preexamine :: Monoid e => s -> Getting (e, First a) s a -> Validation e a
+preexamine s l = s ^&? l
 
 infixl 8 %&~
 -- | Operator alias of 'tryModify'
