@@ -17,15 +17,15 @@ main = hspec $ do
               `shouldBe` ((), "1234")
 
         it "should view properly through successful assertions" $ do
-            numbers ^&. _2 . traversed . asserting ["shouldn't fail"] (const True) . to show
+            numbers ^&. _2 . traversed . fizzleWhen ["shouldn't fail"] (const True) . to show
               `shouldBe` ([], "1234")
 
         it "should collect failures when they occur" $ do
-            numbers ^&. _2 . traversed . failWithWhen (\n -> [show n]) (const True) . to show
+            numbers ^&. _2 . traversed . fizzleWithWhen (\n -> [show n]) (const True) . to show
               `shouldBe` (["1", "2", "3", "4"], "")
 
         it "should collect failures AND successes when they occur" $ do
-            numbers ^&. _2 . traversed . failWithWhen (\n -> [show n]) even . to (:[])
+            numbers ^&. _2 . traversed . fizzleWithWhen (\n -> [show n]) even . to (:[])
               `shouldBe` (["2", "4"], [1, 3])
 
     describe "viewOrFailList (^&..)" $ do
@@ -34,15 +34,15 @@ main = hspec $ do
               `shouldBe` ((), [1, 2, 3, 4])
 
         it "should view properly through successful assertions" $ do
-            numbers ^&..  (_2 . traversed . asserting ["shouldn't fail"] (const True))
+            numbers ^&..  (_2 . traversed . fizzleWhen ["shouldn't fail"] (const True))
               `shouldBe` ([], [1, 2, 3, 4])
 
         it "should collect failures when they occur" $ do
-            numbers ^&..  (_2 . traversed . failWithWhen (\n -> [show n]) (const True))
+            numbers ^&..  (_2 . traversed . fizzleWithWhen (\n -> [show n]) (const True))
               `shouldBe` (["1", "2", "3", "4"], [])
 
         it "should collect failures AND successes when they occur" $ do
-            numbers ^&..  (_2 . traversed . failWithWhen (\n -> [show n]) even)
+            numbers ^&..  (_2 . traversed . fizzleWithWhen (\n -> [show n]) even)
               `shouldBe` (["2", "4"], [1, 3])
 
     describe "modifyOrFail %&~" $ do
@@ -50,11 +50,11 @@ main = hspec $ do
             (numbers & _2 . traversed %&~ (*100))
               `shouldBe` (Success ("hi", [100, 200, 300, 400]) :: Validation () (String, [Int]))
         it "should edit successfully through valid assertions" $ do
-            (numbers & _2 . traversed . asserting ["shouldn't fail"] (const True) %&~ (*100))
+            (numbers & _2 . traversed . fizzleWhen ["shouldn't fail"] (const True) %&~ (*100))
               `shouldBe` (Success ("hi", [100, 200, 300, 400]))
         it "should return failures" $ do
-            (numbers & _2 . traversed . failWithWhen (\n -> [n]) (const True) %&~ (*100))
+            (numbers & _2 . traversed . fizzleWithWhen (\n -> [n]) (const True) %&~ (*100))
               `shouldBe` Failure [1, 2, 3, 4]
         it "should return both failures and successes" $ do
-            (numbers & _2 . traversed . failWithWhen (\n -> [n]) even %&~ (*100))
+            (numbers & _2 . traversed . fizzleWithWhen (\n -> [n]) even %&~ (*100))
               `shouldBe` Failure [2, 4]
