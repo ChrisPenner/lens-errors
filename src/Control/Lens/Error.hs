@@ -26,8 +26,8 @@ module Control.Lens.Error
     , fizzleWithWhen
     , fizzleWithUnless
     , maybeFizzleWith
-    , fizzleWhenEmpty
-    , fizzleWhenEmptyWith
+    , orFizzle
+    , orFizzleWith
 
     -- * Adjusting Errors
     , adjustingErrors
@@ -100,21 +100,21 @@ fizzleWith mkErr _ s = fizzle (mkErr s)
 
 -- | Fail with the given error when the provided traversal produces no elements.
 --
--- >>> ("hi", [1, 2, 3, 4]) ^&.. (_2 . traversed . filtered (> 10)) `fizzleWhenEmpty` ["nothing over 10"]
+-- >>> ("hi", [1, 2, 3, 4]) ^&.. (_2 . traversed . filtered (> 10)) `orFizzle` ["nothing over 10"]
 -- (["nothing over 10"],[])
-fizzleWhenEmpty ::
+orFizzle ::
   (LensFail e f, Applicative f) =>
   Traversing (->) f s t a b -> e -> LensLike f s t a b
-fizzleWhenEmpty l e = fizzleWhenEmptyWith l (const e)
+orFizzle l e = orFizzleWith l (const e)
 
 -- | Fail using the given error builder when the provided traversal produces no elements.
 --
--- >>> ("hi", [1, 2, 3, 4]) ^&.. (_2 . traversed . filtered (> 10)) `fizzleWhenEmptyWith` (\(_, xs) -> ["searched " <> show (length xs) <> " elements, no luck"])
+-- >>> ("hi", [1, 2, 3, 4]) ^&.. (_2 . traversed . filtered (> 10)) `orFizzleWith` (\(_, xs) -> ["searched " <> show (length xs) <> " elements, no luck"])
 -- (["searched 4 elements, no luck"],[])
-fizzleWhenEmptyWith ::
+orFizzleWith ::
   (LensFail e f, Applicative f) =>
   Traversing (->) f s t a b -> (s -> e) -> LensLike f s t a b
-fizzleWhenEmptyWith l mkErr = l `failing` fizzleWith mkErr
+orFizzleWith l mkErr = l `failing` fizzleWith mkErr
 
 infixl 8 ^&.
 -- | Operator alias of 'examine'

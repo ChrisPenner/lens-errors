@@ -42,10 +42,10 @@ Let's build a new traversal which reports a nice error if we fail to index
 into the child branch we want:
 
 ```haskell
-let tryIx n = ix n `fizzleWhenEmptyWith` (\xs -> [show n <> " was out of bounds in list: " <> show xs])
+let tryIx n = ix n `orFizzleWith` (\xs -> [show n <> " was out of bounds in list: " <> show xs])
 ```
 
-Here we use `fizzleWhenEmptyWith` which will try to run the given traversal; but
+Here we use `orFizzleWith` which will try to run the given traversal; but
 will build and throw a nice error if the traversal returns no elements.
 
 Now that we've added errors to our lens chain the standard lens-running combinators
@@ -90,7 +90,7 @@ If we use `^&?`; We'll find the first successfull result; otherwise return all
 the errors we encountered.
 
 ```haskell
->>> let prismError p name = p `fizzleWhenEmptyWith` (\v -> ["Value " <> show v <> " didn't match: " <> name])
+>>> let prismError p name = p `orFizzleWith` (\v -> ["Value " <> show v <> " didn't match: " <> name])
 >>> let _R = prismError _Right "_Right"
 
 >>> [Left (1 :: Int), Left 2, Right (3 :: Int)] ^&? traversed . _R
