@@ -159,8 +159,19 @@ tryModify' :: (a -> Validation e b) -> LensLike (Validation e) s t a b -> s -> V
 tryModify' f l s = s & l %%~ f
 
 
+-- | Adjust any errors which occur in the following branch.
+-- Note that we can't change the error type, but this can be helpful for adding context
+-- to errors if they occur at a position without enough context.
+--
+-- This is does nothing when no errors occur.
 adjustingErrors :: LensFail e f => (e -> e) -> LensLike' f s s
 adjustingErrors addCtx f s = alterErrors addCtx (f s)
 
+-- | Adjust any errors which occur in the following branch, using the value available at
+-- the current position to add context..
+-- Note that we can't change the error type, but this can be helpful for adding context
+-- to errors if they occur at a position without enough context.
+--
+-- This is does nothing when no errors occur.
 adjustingErrorsWith :: LensFail e f => (s -> e -> e) -> LensLike' f s s
 adjustingErrorsWith addCtx f s = alterErrors (addCtx s) (f s)
