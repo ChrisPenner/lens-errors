@@ -106,6 +106,14 @@ main = hspec $ do
         it "should always fizzle using the error builder" $ do
             numbers ^&.. (_2 . traversed . filtered (> 10)) `fizzleWhenEmptyWith` (\(_, xs) -> ["searched " <> show (length xs) <> " elements, no luck"])
               `shouldBe` (["searched 4 elements, no luck"], [])
+    describe "adjustingErrors" $ do
+        it "should alter errors from its sub-branch, but not outside of it" $ do
+            [1, 2, 3, 4 :: Int] ^&.. traversed . fizzleWhen ["got 4"] (== 4) . adjustingErrors (fmap (<> "!")) . fizzleWhen ["got 3"] (== 3)
+              `shouldBe` (["got 3!", "got 4"], [1, 2])
+    describe "adjustingErrorsWith" $ do
+        it "should alter errors from its sub-branch, but not outside of it, using the value to construct the error" $ do
+            [1, 2, 3, 4 :: Int] ^&.. traversed . fizzleWhen ["got 4"] (== 4) . adjustingErrorsWith (\n -> fmap (\e -> show n <> ": " <> e)) . fizzleWhen ["fail"] (== 3)
+              `shouldBe` (["3: fail","got 4"], [1, 2])
 
     describe "real examples" $ do
         it "tree get success" $ do

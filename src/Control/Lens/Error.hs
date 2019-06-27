@@ -28,6 +28,10 @@ module Control.Lens.Error
     , fizzleWhenEmpty
     , fizzleWhenEmptyWith
 
+    -- * Adjusting Errors
+    , adjustingErrors
+    , adjustingErrorsWith
+
     -- * Classes
     , LensFail(..)
 
@@ -154,3 +158,9 @@ infixl 8 %%&~
 tryModify' :: (a -> Validation e b) -> LensLike (Validation e) s t a b -> s -> Validation e t
 tryModify' f l s = s & l %%~ f
 
+
+adjustingErrors :: LensFail e f => (e -> e) -> LensLike' f s s
+adjustingErrors addCtx f s = alterErrors addCtx (f s)
+
+adjustingErrorsWith :: LensFail e f => (s -> e -> e) -> LensLike' f s s
+adjustingErrorsWith addCtx f s = alterErrors (addCtx s) (f s)
