@@ -55,6 +55,14 @@ main = hspec $ do
               `shouldBe` (Failure [ "Value Left 1 didn't match: _Right"
                                   , "Value Left 2 didn't match: _Right"
                                   , "Value Left 3 didn't match: _Right"])
+    describe "trySet .&~" $ do
+        it "should set successfully" $ do
+            (numbers & _2 . ix 1 . fizzleWhen ["shouldn't fail"] (const False) .&~ 42)
+              `shouldBe` Success ("hi",[1,42,3,4])
+        it "should return failures" $ do
+            (numbers & _2 . ix 1 . fizzleWithWhen (\n -> [n]) even .&~ 42)
+              `shouldBe` Failure [2]
+
     describe "tryModify %&~" $ do
         it "should edit successfully with no assertions" $ do
             (numbers & _2 . traversed %&~ (*100))

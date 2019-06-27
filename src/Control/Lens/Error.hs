@@ -8,14 +8,16 @@ module Control.Lens.Error
     -- * Actions
       examine
     , examineList
+    , preexamine
+    , trySet
     , tryModify
     , tryModify'
-    , preexamine
 
     -- * Operators
     , (^&.)
     , (^&..)
     , (^&?)
+    , (.&~)
     , (%&~)
     , (%%&~)
 
@@ -187,6 +189,33 @@ infixl 8 ^&?
 -- Failure ["1 is too small","2 is too small","3 is too small","4 is too small"]
 preexamine :: Monoid e => Getting (e, First a) s a -> s -> Validation e a
 preexamine l s = s ^&? l
+
+infixl 8 .&~
+-- | Operator alias of 'trySet
+--
+-- Set the focus of a lens/traversal. Returns a monoidal summary of failures or the altered
+-- structure.
+--
+-- >>> ("hi", [1, 2, 3, 4]) & _2 . ix 1 . fizzleWhen ["shouldn't fail"] (const False) .&~ 42
+-- Success ("hi",[1,42,3,4])
+--
+-- >>> ("hi", [1, 2, 3, 4]) & _2 . ix 1 . fizzleWithWhen (\n -> [n]) even .&~ 42
+-- Failure [2]
+(.&~) :: LensLike (Validation e) s t a b -> b -> s -> Validation e t
+(.&~) l b s = s & l %%~ Success . const b
+
+-- | See also '.&~'
+--
+-- Set the focus of a lens/traversal. Returns a monoidal summary of failures or the altered
+-- structure.
+--
+-- >>> trySet (_2 . ix 1 . fizzleWhen ["shouldn't fail"] (const False)) 42 ("hi", [1, 2, 3, 4])
+-- Success ("hi",[1,42,3,4])
+--
+-- >>> trySet  (_2 . ix 1 . fizzleWithWhen (\n -> [n]) even) 42 ("hi", [1, 2, 3, 4])
+-- Failure [2]
+trySet :: LensLike (Validation e) s t a b -> b -> s -> Validation e t
+trySet = (.&~)
 
 infixl 8 %&~
 -- | Operator alias of 'tryModify'
