@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE FlexibleContexts #-}
 import Control.Lens
 import Control.Lens.Error
 import Test.Hspec
@@ -64,9 +65,26 @@ main = hspec $ do
         it "should return failures" $ do
             (numbers & _2 . traversed . fizzleWithWhen (\n -> [n]) (const True) %&~ (*100))
               `shouldBe` Failure [1, 2, 3, 4]
-        it "should return both failures and successes" $ do
+        it "should collect all failures if anything fails" $ do
             (numbers & _2 . traversed . fizzleWithWhen (\n -> [n]) even %&~ (*100))
               `shouldBe` Failure [2, 4]
+
+    describe "tryModify' %%&~" $ do
+        it "should edit successfully with no assertions" $ do
+            (numbers & _2 . traversed %%&~ Success . (*100))
+              `shouldBe` (Success ("hi", [100, 200, 300, 400]) :: Validation () (String, [Int]))
+        it "should edit successfully through valid assertions" $ do
+            (numbers & _2 . traversed . fizzleWhen ["shouldn't fail"] (const False) %%&~ Success . (*100))
+              `shouldBe` (Success ("hi", [100, 200, 300, 400]))
+        it "should return failures" $ do
+            (numbers & _2 . traversed . fizzleWithWhen (\n -> [n]) (const True) %%&~ Success . (*100))
+              `shouldBe` Failure [1, 2, 3, 4]
+        it "should collect all failures if anything fails" $ do
+            (numbers & _2 . traversed . fizzleWithWhen (\n -> [n]) even %%&~ Success . (*100))
+              `shouldBe` Failure [2, 4]
+        it "should fail if the function fails" $ do
+            (numbers & _2 . traversed %%&~ (\n -> Failure [show n <> " failed"]))
+              `shouldBe` (Failure ["1 failed","2 failed","3 failed","4 failed"] :: Validation [String] (String, [Int]))
 
     describe "fizzleWhen" $ do
         it "should fizzle when predicate is true" $ do
@@ -127,8 +145,9 @@ main = hspec $ do
             tree ^&.. branches . tryIx 0 . branches . tryIx 10 . root
                 `shouldBe` (["10 was out of bounds in list: [Node {rootLabel = \"bottom\", subForest = []}]"],[])
         it "tree set" $ do
-            let tree = Node "top" [Node "mid" [Node "bottom" []]]
-            let tryIx n = ix n `fizzleWhenEmptyWith` (\xs -> [show n <> " was out of bounds in list: " <> show xs])
+            let tree = Node "top" [Node "mid" [Node "bottom" []]] :: Tree String
+            let tryIx :: (Applicative f, LensFail [String] f, Show a) => Int -> LensLike' f [a] a
+                tryIx n = ix n `fizzleWhenEmptyWith` (\xs -> [show n <> " was out of bounds in list: " <> show xs])
             (tree & branches . tryIx 0 . branches . tryIx 10 . root %&~ (<> "!!"))
                 `shouldBe` (Failure ["10 was out of bounds in list: [Node {rootLabel = \"bottom\", subForest = []}]"])
 
