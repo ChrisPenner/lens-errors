@@ -1,5 +1,7 @@
 # lens-errors
 
+[HACKAGE](http://hackage.haskell.org/package/lens-errors)
+
 Handling failure deep inside a lens chain intelligently is hard;
 You tried to crawl deep into a tree, but it failed and you're not sure why!
 This helps with that.
