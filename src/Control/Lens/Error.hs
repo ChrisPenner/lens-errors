@@ -35,6 +35,10 @@ module Control.Lens.Error
     , adjustingErrors
     , adjustingErrorsWith
 
+    -- * Types
+    , Fizzler
+    , Fizzler'
+
     -- * Classes
     , LensFail(..)
 
@@ -47,11 +51,17 @@ import Control.Lens
 import Data.Either.Validation
 import Data.Monoid
 
+-- | Represents a lens-like which may fail with an error of type @e@
+type Fizzler e s t a b = forall f. (LensFail e f, Applicative f) => LensLike f s t a b
+
+-- | Represents a simple 'Fizzler'
+type Fizzler' e s a = Fizzler e s s a a
+
 -- | Cause the current traversal to fizzle with a failure when the focus matches a predicate
 --
 -- >>> ("hi", [1, 2, 3, 4]) ^&.. _2 . traversed . fizzleWhen ["failure"] even :: ([String], [Int])
 -- (["failure","failure"],[1,3])
-fizzleWhen :: LensFail e f => e -> (s -> Bool) -> LensLike' f s s
+fizzleWhen :: e -> (s -> Bool) -> Fizzler' e s s
 fizzleWhen e check f s | check s = fizzle e
                        | otherwise = f s
 
@@ -59,7 +69,7 @@ fizzleWhen e check f s | check s = fizzle e
 --
 -- >>> ("hi", [1, 2, 3, 4]) ^&.. _2 . traversed . fizzleUnless ["failure"] even
 -- (["failure","failure"],[2,4])
-fizzleUnless :: LensFail e f => e -> (s -> Bool) -> LensLike' f s s
+fizzleUnless :: e -> (s -> Bool) -> Fizzler' e s s
 fizzleUnless e check = fizzleWhen e (not . check)
 
 -- | Given a function which might produce an error, fizzle  on 'Just', pass through on 'Nothing'
@@ -69,7 +79,7 @@ fizzleUnless e check = fizzleWhen e (not . check)
 -- > >>> | otherwise = Nothing
 -- > >>> ("hi", [1, 2, 3, 4]) ^&.. _2 . traversed . maybeFizzleWith p
 -- > (["2 was even","4 was even"],[1,3])
-maybeFizzleWith :: LensFail e f => (s -> Maybe e) -> LensLike' f s s
+maybeFizzleWith :: (s -> Maybe e) -> Fizzler' e s s
 maybeFizzleWith check f s =
     case check s of
         Nothing -> f s
@@ -80,7 +90,7 @@ maybeFizzleWith check f s =
 -- >>> let p x = [show x <> " was even"]
 -- >>> ("hi", [1, 2, 3, 4]) ^&.. _2 . traversed . fizzleWithWhen p even
 -- (["2 was even","4 was even"],[1,3])
-fizzleWithWhen :: LensFail e f => (s -> e) -> (s -> Bool) -> LensLike' f s s
+fizzleWithWhen :: (s -> e) -> (s -> Bool) -> Fizzler' e s s
 fizzleWithWhen mkErr check f s
   | check s = fizzle $ mkErr s
   | otherwise = f s
@@ -90,14 +100,14 @@ fizzleWithWhen mkErr check f s
 -- >>> let p x = [show x <> " was even"]
 -- >>> ("hi", [1, 2, 3, 4]) ^&.. _2 . traversed . fizzleWithUnless p odd
 -- (["2 was even","4 was even"],[1,3])
-fizzleWithUnless :: LensFail e f => (s -> e) -> (s -> Bool)-> LensLike' f s s
+fizzleWithUnless :: (s -> e) -> (s -> Bool) -> Fizzler' e s s
 fizzleWithUnless mkErr check = fizzleWithWhen mkErr (not . check)
 
 -- | Always fizzle with the given error builder
 -- >>> let p x = [show x]
 -- >>> ("hi", [1, 2, 3, 4]) ^&.. _2 . traversed . fizzleWith p
 -- (["1","2","3","4"],[])
-fizzleWith :: LensFail e f => (s -> e) -> LensLike f s t a b
+fizzleWith :: (s -> e) -> Fizzler e s t a b
 fizzleWith mkErr _ s = fizzle (mkErr s)
 
 -- | Fail with the given error when the provided traversal produces no elements.
@@ -284,7 +294,7 @@ tryModify' l f s = s & l %%~ f
 --
 -- >>> [1, 2, 3, 4 :: Int] ^&.. traversed . fizzleWhen ["got 4"] (== 4) . adjustingErrors (fmap (<> "!")) . fizzleWhen ["got 3"] (== 3)
 -- (["got 3!","got 4"],[1,2])
-adjustingErrors :: LensFail e f => (e -> e) -> LensLike' f s s
+adjustingErrors :: (e -> e) -> Fizzler' e s s
 adjustingErrors addCtx f s = alterErrors addCtx (f s)
 
 -- | Adjust any errors which occur in the following branch, using the value available at
@@ -296,5 +306,5 @@ adjustingErrors addCtx f s = alterErrors addCtx (f s)
 --
 -- >>> [1, 2, 3, 4 :: Int] ^&.. traversed . fizzleWhen ["got 4"] (== 4) . adjustingErrorsWith (\n -> fmap (\e -> show n <> ": " <> e)) . fizzleWhen ["fail"] (== 3)
 -- (["3: fail","got 4"],[1,2])
-adjustingErrorsWith :: LensFail e f => (s -> e -> e) -> LensLike' f s s
+adjustingErrorsWith :: (s -> e -> e) -> Fizzler' e s s
 adjustingErrorsWith addCtx f s = alterErrors (addCtx s) (f s)
