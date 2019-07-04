@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Control.Lens.Error
     (
     -- * Actions
@@ -22,6 +23,7 @@ module Control.Lens.Error
     , (%%&~)
 
     -- * Failing
+    , fizzler
     , fizzleWhen
     , fizzleUnless
     , fizzleWith
@@ -56,6 +58,17 @@ type Fizzler e s t a b = forall f. (LensFail e f, Applicative f) => LensLike f s
 
 -- | Represents a simple 'Fizzler'
 type Fizzler' e s a = Fizzler e s s a a
+
+-- | Construct a fizzler allowing failure both in the getter and setter.
+fizzler :: (s -> Either e a) -> (s -> b -> Either e t) -> Fizzler e s t a b
+fizzler viewFizzler setFizzle f s =
+    case viewFizzler s of
+        Left e -> fizzle e
+        Right a -> joinErrors (go <$> f a)
+  where
+    go b = case setFizzle s b of
+             Left e -> fizzle e
+             Right t -> pure t
 
 -- | Cause the current traversal to fizzle with a failure when the focus matches a predicate
 --

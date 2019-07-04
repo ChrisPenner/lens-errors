@@ -1,5 +1,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 import Control.Lens
 import Control.Lens.Error
 import Test.Hspec
@@ -11,6 +13,32 @@ numbers = ("hi", [1, 2, 3, 4])
 
 main :: IO ()
 main = hspec $ do
+    describe "fizzler" $ do
+        let fizzHead :: Fizzler' [String] [Int] Int
+            fizzHead = fizzler getter setter
+            getter :: [Int] -> Either [String] Int
+            getter [] = Left ["empty list!"]
+            getter (x:_) = Right x
+            setter :: [Int] -> Int -> Either [String] [Int]
+            setter (x:_) _ | x < 0 = Left ["refusing to set over negative head"]
+            setter (_:xs) x = Right (x : xs)
+            setter [] _ = Right []
+        it "should get when succesful" $ do
+            ("hi", [1, 2, 3, 4]) ^&.. _2 . fizzHead
+              `shouldBe` (([], [1]))
+        it "should return errors from getter" $ do
+            ("hi", []) ^&.. _2 . fizzHead
+              `shouldBe` ((["empty list!"], []))
+        it "should set when succesful" $ do
+            (("hi", [1, 2, 3, 4]) & _2 . fizzHead %&~ (*10))
+              `shouldBe` (Success ("hi", [10, 2, 3, 4]))
+        it "should return errors from getter when setting iff that fails first" $ do
+            (("hi", []) & _2 . fizzHead %&~ (*10))
+              `shouldBe` Failure ["empty list!"]
+        it "should return errors from setter iff getter passes but setter fails" $ do
+            (("hi", [-10, 2, 3, 4]) & _2 . fizzHead %&~ (*10))
+              `shouldBe` Failure ["refusing to set over negative head"]
+
     describe "examine (^&.)" $ do
         it "should view properly through traversals/folds" $ do
             numbers ^&. _2 . traversed . to show
